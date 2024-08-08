@@ -1,0 +1,13 @@
+## Interface: 11503, 20504, 30403, 40400, 110000, 110002
+## Title: BigWigs |cffff0000+|r|cffffffffTranscriptorReplay|r
+## Notes: "Play" Transcriptor logs to show BigWigs warnings.
+## Author: Nebula
+## Version: @project-version@
+## Dependencies: BigWigs, Transcriptor
+## LoadOnDemand: 1
+## X-Category: Development Tools
+## X-BigWigs-LoadOn-CoreEnabled: 1
+## SavedVariables: BigWigsTSR
+
+Replay.lua
+Hooks.lua
