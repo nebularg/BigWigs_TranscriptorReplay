@@ -492,7 +492,12 @@ function plugin:DoLine(line)
 		local boss = bossState[unit]
 		if boss then
 			local target = target:sub(9)
-			boss.target = target ~= "??" and target or nil
+			if target == "??" then
+				target = nil
+			elseif groupState[target] then
+				target = groupState[target].name
+			end
+			boss.target = target
 		end
 
 	elseif type == "UNIT_POWER_UPDATE" then

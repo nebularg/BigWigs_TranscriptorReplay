@@ -248,7 +248,7 @@ end
 
 function hookFuncs.Tanking(module, targetUnit, sourceUnit)
 	if bossState[targetUnit] then
-		return bossState[targetUnit].target == (module:UnitName(sourceUnit) or myName)
+		return bossState[targetUnit].target == module:UnitName(sourceUnit)
 	end
 end
 
