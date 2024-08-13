@@ -306,7 +306,7 @@ function plugin:Print(...)
 end
 
 function plugin:Debug(...)
-	if plugin.db.profile.debug then
+	if db_debug then
 		self:Print("|cff87abff[DEBUG]|r", ...)
 	end
 end
