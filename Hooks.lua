@@ -2,7 +2,9 @@ local _, ns = ...
 
 local plugin, CL = ns.plugin, ns.CL
 
--- luacheck: globals C_ChatInfo
+local LibSpec = LibStub("LibSpecialization")
+
+-- luacheck: globals C_ChatInfo UnitClassBase
 local wipe = table.wipe
 
 local eventMap = ns.eventMap
@@ -12,6 +14,8 @@ local groupState = ns.groupState
 
 local myName = plugin:UnitName("player")
 local myGUID = plugin:UnitGUID("player")
+
+local classColorMessages = true
 
 local FILTER_EVENTS = {
 	["SPELL_DAMAGE"] = true,
@@ -60,6 +64,7 @@ function plugin:Unhook()
 	for unit in next, bossState do
 		wipe(bossState[unit])
 	end
+	wipe(groupState)
 end
 
 -------------------------------------------------------------------------------
@@ -135,6 +140,47 @@ function hookFuncs.UnregisterUnitEvent(module, event, ...)
 	unitEventMap[event] = nil
 end
 
+function hookFuncs.Engage(module, ...)
+	hooks.Engage(module, ...)
+
+	-- updateData
+	local messagesModule = BigWigs:GetPlugin("Messages", true)
+	classColorMessages = not messagesModule or messagesModule.db.profile.classcolor
+
+	local specId, role, position = LibSpec:MySpecialization()
+	groupState[myName] = {
+		name = myName,
+		class = UnitClassBase("player"),
+		guid = myGUID,
+		specId = specId,
+		role = role,
+		position = position,
+		unit = "player",
+	}
+end
+
+function hookFuncs.ColorName(module, player, overwrite)
+	local function coloredName(name, useColor)
+		local info = groupState[name]
+		if info then
+			name = gsub(info.name, "%-.+", "")
+			local color = useColor and RAID_CLASS_COLORS[info.class]
+			return color and color:WrapTextInColorCode(name) or name
+		end
+		-- return "???"
+		return gsub(name, "%-.+", "")
+	end
+
+	if type(player) == "table" then
+		local tmp = {}
+		for i = 1, #player do
+			tmp[i] = coloredName(player[i], classColorMessages or overwrite)
+		end
+		return tmp
+	end
+	return coloredName(player, classColorMessages or overwrite)
+end
+
 do
 	local bosstargets = {}
 	for i = 1, 5 do -- goes to 8 now? but TS IEEU only tracks 5
@@ -150,6 +196,11 @@ do
 				return bossState[boss].target
 			end
 		end
+		for name, info in next, groupState do
+			if name == unit or info.unit == unit then
+				return info.name
+			end
+		end
 		return hooks.UnitName(module, unit)
 	end
 end
@@ -157,6 +208,11 @@ end
 function hookFuncs.UnitGUID(module, unit)
 	if bossState[unit] then
 		return bossState[unit].guid
+	end
+	for name, info in next, groupState do
+		if name == unit or info.unit == unit then
+			return info.guid
+		end
 	end
 	return hooks.UnitGUID(module, unit)
 end
@@ -174,6 +230,11 @@ function hookFuncs.UnitTokenFromGUID(module, guid)
 			return unit
 		end
 	end
+	for _, info in next, groupState do
+		if info.guid == guid then
+			return info.unit
+		end
+	end
 	return hooks.UnitTokenFromGUID(module, guid)
 end
 
@@ -183,12 +244,39 @@ function hookFuncs.GetUnitTarget(module, func, _, guid)
 	end)
 end
 
-for _, role in ipairs{"Melee", "Ranged", "Tank", "Healer", "Damager"} do
-	hookFuncs[role] = function(module, unit)
-		if plugin.db.profile.ignore_role then
-			return true
-		end
-		return hooks[role](module, unit)
+function hookFuncs.Tanking(module, targetUnit, sourceUnit)
+	if bossState[targetUnit] then
+		return bossState[targetUnit].target == (module:UnitName(sourceUnit) or myName)
+	end
+end
+
+do
+	local function getPlayerRole(name)
+		return groupState[name] and groupState[name].role
+	end
+
+	local function getPlayerRolePosition(name)
+		return groupState[name] and groupState[name].postion
+	end
+
+	function hookFuncs.Tank(module, unit)
+		return getPlayerRole(unit) == "TANK"
+	end
+
+	function hookFuncs.Healer(module, unit)
+		return getPlayerRole(unit) == "HEALER"
+	end
+
+	function hookFuncs.Damager(module, unit)
+		return getPlayerRole(unit) == "DAMAGER"
+	end
+
+	function hookFuncs.Melee(module, unit)
+		return getPlayerRolePosition(unit) == "MELEE"
+	end
+
+	function hookFuncs.Ranged(module, unit)
+		return getPlayerRolePosition(unit) == "RANGED"
 	end
 end
 

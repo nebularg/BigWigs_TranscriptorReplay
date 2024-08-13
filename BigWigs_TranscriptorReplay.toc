@@ -3,6 +3,7 @@
 ## Notes: "Play" Transcriptor logs to show BigWigs warnings.
 ## Author: Nebula
 ## Version: @project-version@
+## OptionalDeps: LibSpecialization
 ## Dependencies: BigWigs, Transcriptor
 ## LoadOnDemand: 1
 ## X-Category: Development Tools

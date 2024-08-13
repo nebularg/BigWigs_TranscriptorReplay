@@ -33,6 +33,7 @@ local myName = plugin:UnitName("player")
 plugin.myName = myName
 local myGUID = plugin:UnitGUID("player")
 plugin.myGUID = myGUID
+local groupCount = nil
 local timer = nil
 
 local diffShort = {
@@ -179,14 +180,14 @@ local function GetOptions()
 				set = function(info, value) db.always_me = value end,
 				order = 2,
 			},
-			ignore_role = {
-				type = "toggle",
-				name = "Ignore role",
-				desc = "Always show warnings, regardless of role restrictions. By default, your current class specialization determines your role.",
-				get = function(info) return db.ignore_role end,
-				set = function(info, value) db.ignore_role = value end,
-				order = 3,
-			},
+			-- ignore_role = {
+			-- 	type = "toggle",
+			-- 	name = "Ignore role",
+			-- 	desc = "Always show warnings, regardless of role restrictions. By default, your current class specialization determines your role.",
+			-- 	get = function(info) return db.ignore_role end,
+			-- 	set = function(info, value) db.ignore_role = value end,
+			-- 	order = 3,
+			-- },
 			speed = {
 				type = "range", min = 1, max = 10, step = 1,
 				name = "Playback speed",
@@ -388,12 +389,16 @@ do
 					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = myGUID, myName, FLAGS_ME, 0
 					prev = time
 				else
-					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, trimName(destName), setFlags(destGUID), 0
+					local info = groupState[destName]
+					if info then
+						args.destGUID, args.destName, args.destFlags, args.destRaidFlags = info.guid, info.name, FLAGS_PLAYER, 0
+					else
+						args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, trimName(destName), setFlags(destGUID), 0
+					end
 				end
 				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
 				args.time, args.extraSpellId, args.extraSpellName, args.amount = time, extraSpellId, amount, tonumber(amount)
 				if self.module[func] then
-					-- print(event, func, spellId, spellName, destGUID, destName)
 					self.module[func](self.module, args)
 				end
 			end
@@ -433,8 +438,19 @@ function plugin:DoLine(line)
 
 	elseif type == "PLAYER_INFO" then
 		local name, class, guid, specId, role, position, talents = strsplit("#", info)
-		if guid then
-			groupState[guid] = {name, class, specId, role, position}
+		if name then
+			local id = (groupCount or 0) + 1
+			local unit = ("raid%d"):format(id)
+			groupState[name] = {
+				name = name,
+				class = class,
+				guid = guid,
+				specId = specId,
+				role = role,
+				position = position,
+				unit = unit,
+			}
+			groupCount = id
 		end
 
 	elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
@@ -562,6 +578,7 @@ function plugin:Play(index)
 		self.startLogTime = getLogLineTime(log[index or self.startIndex])
 		self.endLogTime = getLogLineTime(log[self.endIndex])
 		self.playing = true
+		groupCount = nil
 
 		local diff = GetDifficultyInfo(self.difficulty or 0) or "???"
 		self:Print(("Starting %q encounter (%s)"):format(module.displayName, diff))
