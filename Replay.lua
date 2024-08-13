@@ -27,6 +27,8 @@ local bossState = {boss1 = {}, boss2 = {}, boss3 = {}, boss4 = {}, boss5 = {}}
 ns.bossState = bossState
 local groupState = {}
 ns.groupState = groupState
+local alwaysThrottle = {}
+ns.alwaysThrottle = alwaysThrottle
 
 local args = {}
 local myName = plugin:UnitName("player")
@@ -385,9 +387,9 @@ do
 			end
 			if func then
 				args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, trimName(sourceName), sourceFlags or setFlags(sourceGUID), 0
-				if AURA_EVENTS[event] and destGUID:find("^Player") and self.db.profile.always_me and time - prev > 1.5 then
+				if AURA_EVENTS[event] and destGUID:find("^Player") and self.db.profile.always_me and (time - (alwaysThrottle[func] or 0)) > 1.5 then
+					alwaysThrottle[func] = time
 					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = myGUID, myName, FLAGS_ME, 0
-					prev = time
 				else
 					local info = groupState[destName]
 					if info then

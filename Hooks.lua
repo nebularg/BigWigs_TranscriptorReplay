@@ -11,6 +11,7 @@ local eventMap = ns.eventMap
 local unitEventMap = ns.unitEventMap
 local bossState = ns.bossState
 local groupState = ns.groupState
+local alwaysThrottle = ns.alwaysThrottle
 
 local myName = plugin:UnitName("player")
 local myGUID = plugin:UnitGUID("player")
@@ -65,6 +66,7 @@ function plugin:Unhook()
 		wipe(bossState[unit])
 	end
 	wipe(groupState)
+	wipe(alwaysThrottle)
 end
 
 -------------------------------------------------------------------------------
