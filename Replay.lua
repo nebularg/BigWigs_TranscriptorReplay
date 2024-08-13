@@ -561,6 +561,7 @@ function plugin:Play(index)
 		self.startTime = GetTime()
 		self.startLogTime = getLogLineTime(log[index or self.startIndex])
 		self.endLogTime = getLogLineTime(log[self.endIndex])
+		self.playing = true
 
 		local diff = GetDifficultyInfo(self.difficulty or 0) or "???"
 		self:Print(("Starting %q encounter (%s)"):format(module.displayName, diff))
@@ -580,7 +581,6 @@ function plugin:Play(index)
 		end
 		module:Bar(false, self.endLogTime - self.startLogTime, "Log Duration", "spell_holy_borrowedtime")
 
-		self.playing = true
 		self:UpdateGUI()
 	end
 
