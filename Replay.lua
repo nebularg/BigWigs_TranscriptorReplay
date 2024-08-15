@@ -288,19 +288,6 @@ plugin.subPanelOptions = {
 -- Initialization
 --
 
--- function plugin:OnPluginEnable()
--- 	self:RegisterMessage("BigWigs_OnBossDisable")
--- end
-
--- function plugin:BigWigs_OnBossDisable(_, module)
--- 	wipe(eventMap)
--- 	wipe(unitEventMap)
--- 	for unit in next, bossState do
--- 		wipe(bossState[unit])
--- 	end
--- 	self:Unhook()
--- end
-
 function plugin:Print(...)
 	print("|cffffff00TranscriptorReplay:|r", ...)
 end
@@ -309,6 +296,17 @@ function plugin:Debug(...)
 	if db_debug then
 		self:Print("|cff87abff[DEBUG]|r", ...)
 	end
+end
+
+local function Reset()
+	wipe(eventMap)
+	wipe(unitEventMap)
+	for unit in next, bossState do
+		wipe(bossState[unit])
+	end
+	wipe(groupState)
+	groupCount = nil
+	wipe(alwaysThrottle)
 end
 
 -------------------------------------------------------------------------------
@@ -585,7 +583,6 @@ function plugin:Play(index)
 		self.startLogTime = getLogLineTime(log[index or self.startIndex])
 		self.endLogTime = getLogLineTime(log[self.endIndex])
 		self.playing = true
-		groupCount = nil
 
 		local diff = GetDifficultyInfo(self.difficulty or 0) or "???"
 		self:Print(("Starting %q encounter (%s)"):format(module.displayName, diff))
@@ -629,6 +626,7 @@ function plugin:Stop(silent)
 
 	if self.module then
 		self:Unhook()
+		Reset()
 		self.module:Disable()
 		if not silent then
 			self:Print("Stopped")
