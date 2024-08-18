@@ -368,7 +368,7 @@ do
 			-- "SPELL_AURA_APPLIED#1300#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#453207#Lit Fuse#BUFF#nil#nil#nil#nil#nil",
 			local sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount
 			local numArgs = select("#", ...)
-			if numArgs == 8 or numArgs == 13 then -- no flags
+			if numArgs == 8 or numArgs == 12 then -- no flags
 				sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
 			else
 				sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
@@ -399,6 +399,8 @@ do
 				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
 				args.time, args.extraSpellId, args.extraSpellName, args.amount = time, extraSpellId, amount, tonumber(amount)
 				if self.module[func] then
+					self:Debug(time, event, func, args.spellId, args.spellName, args.destName)
+					self.args = args
 					self.module[func](self.module, args)
 				end
 			end
@@ -432,6 +434,7 @@ function plugin:DoLine(line)
 			-- "[[boss1:Cast-3-2085-2657-32297-432965-00AB7F16F4:432965]]",
 			local unit, castId, spellId = strsplit(":", info:match("%[%[(.-)%]%]"))
 			if unit:sub(1, 4) == "boss" then -- XXX do i actually need to restrict to the registered unit(s)?
+				-- self:Debug(time, type, unit, spellId) -- too spammy
 				self.module[func](self.module, type, unit, castId, tonumber(spellId))
 			end
 		end
