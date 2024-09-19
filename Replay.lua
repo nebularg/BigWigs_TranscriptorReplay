@@ -13,6 +13,8 @@ ns.plugin, ns.CL = plugin, CL
 -- Locals
 --
 
+local LibSpec = LibStub("LibSpecialization")
+
 -- luacheck: globals Transcriptor BigWigsTSR date GetSpellTexture C_Spell
 local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
 local wipe = table.wipe
@@ -110,7 +112,7 @@ end
 --
 
 plugin.defaultDB = {
-	always_me = true,
+	always_me = false,
 	ignore_role = false,
 	speed = 2,
 }
@@ -118,6 +120,7 @@ plugin.defaultDB = {
 local db_debug = false
 local db_log = nil
 local db_stage = nil
+local db_player = nil
 
 local values = {}
 local subvalues = {}
@@ -179,7 +182,11 @@ local function GetOptions()
 				name = "Always on me",
 				desc = "Make all debuffs target you.",
 				get = function(info) return db.always_me end,
-				set = function(info, value) db.always_me = value end,
+				set = function(info, value)
+					db.always_me = value
+					db_player = nil
+					plugin:SetPlayer(myName)
+				end,
 				order = 2,
 			},
 			-- ignore_role = {
@@ -208,6 +215,7 @@ local function GetOptions()
 				set = function(info, value)
 					db_log = value
 					db_stage = nil
+					db_player = nil
 					setStages(value)
 					plugin:Load(value, true)
 				end,
@@ -237,6 +245,27 @@ local function GetOptions()
 				order = 11,
 				width = "full",
 			},
+			player = {
+				type = "select",
+				name = "Viewpoint",
+				get = function(info)
+					return db_player
+				end,
+				set = function(info, value)
+					db_player = value
+					plugin:SetPlayer(db_player)
+				end,
+				values = function(info)
+					local list = {}
+					for name, info in next, groupState do
+						local classColorInfo = RAID_CLASS_COLORS[info.class]
+						list[name] = classColorInfo and _G.WrapTextInColorCode(name, classColorInfo.colorStr) or name
+					end
+					return list
+				end,
+				order = 12,
+				disabled = function() return db.always_me or not next(groupState) or plugin:IsPlaying() end,
+			},
 			play = {
 				type = "execute",
 				name = "Play",
@@ -265,13 +294,13 @@ local function GetOptions()
 				set = function(info, value) db_debug = value end,
 				order = 31,
 			},
-			create = {
-				type = "execute",
-				name = "Create log",
-				desc = "Save a new log only including events that trigger a callback.",
-				disabled = true,
-				order = 32,
-			}
+			-- create = {
+			-- 	type = "execute",
+			-- 	name = "Create log",
+			-- 	desc = "Save a new log only including events that trigger a callback.",
+			-- 	disabled = true,
+			-- 	order = 32,
+			-- }
 		},
 	}
 
@@ -304,13 +333,24 @@ local function Reset()
 	for unit in next, bossState do
 		wipe(bossState[unit])
 	end
-	wipe(groupState)
-	groupCount = nil
 	wipe(alwaysThrottle)
 end
 
 -------------------------------------------------------------------------------
 -- Log events
+
+function plugin:SetPlayer(name)
+	if name == myName then
+		self.myName = myName
+		self.myGUID = myGUID
+	else
+		local info = groupState[name]
+		if info then
+			self.myName = info.name
+			self.myGUID = info.guid
+		end
+	end
+end
 
 do
 	-- throttle for "always on me"
@@ -384,7 +424,7 @@ do
 				args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, trimName(sourceName), sourceFlags or setFlags(sourceGUID), 0
 				if AURA_EVENTS[event] and destGUID:find("^Player") and self.db.profile.always_me and (time - (alwaysThrottle[func] or 0)) > 1.5 then
 					alwaysThrottle[func] = time
-					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = myGUID, myName, FLAGS_ME, 0
+					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = self.myGUID, self.myName, FLAGS_ME, 0
 				else
 					local info = groupState[destName]
 					if info then
@@ -421,23 +461,6 @@ function plugin:DoLine(line)
 				-- self:Debug(time, type, unit, spellId) -- too spammy
 				self.module[func](self.module, type, unit, castId, tonumber(spellId))
 			end
-		end
-
-	elseif type == "PLAYER_INFO" then
-		local name, class, guid, specId, role, position, talents = strsplit("#", info)
-		if name then
-			local id = (groupCount or 0) + 1
-			local unit = ("raid%d"):format(id)
-			groupState[name] = {
-				name = name,
-				class = class,
-				guid = guid,
-				specId = specId,
-				role = role,
-				position = position,
-				unit = unit,
-			}
-			groupCount = id
 		end
 
 	elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
@@ -544,6 +567,43 @@ function plugin:Load(logName, silent)
 		return
 	end
 
+	wipe(groupState)
+	local specId, role, position = LibSpec:MySpecialization()
+	groupState[myName] = {
+		unit = "player",
+		name = myName,
+		class = _G.UnitClassBase("player"),
+		guid = myGUID,
+		specId = specId,
+		role = role,
+		position = position,
+	}
+	groupCount = 1
+
+	local index = 1
+	local _, type, info, prev
+	repeat
+		prev = type
+		_, type, info = getLogLineInfo(log.total[index])
+		if type == "PLAYER_INFO" then
+			local name, class, guid, specId, role, position, talents = strsplit("#", info)
+			if name then
+				local id = (groupCount or 0) + 1
+				groupState[name] = {
+					unit = ("raid%d"):format(id),
+					name = name,
+					class = class,
+					guid = guid,
+					specId = specId,
+					role = role,
+					position = position,
+				}
+				groupCount = id
+			end
+		end
+		index = index + 1
+	until prev == "PLAYER_INFO" and type ~= "PLAYER_INFO"
+
 	self.module = module
 	self.difficulty = diff
 	self.log = log.total
@@ -612,9 +672,9 @@ function plugin:Stop(silent)
 	timer = nil
 
 	if self.module then
+		self.module:Disable()
 		self:Unhook()
 		Reset()
-		self.module:Disable()
 		if not silent then
 			self:Print("Stopped")
 		end

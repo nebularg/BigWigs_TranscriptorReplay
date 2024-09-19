@@ -2,8 +2,6 @@ local _, ns = ...
 
 local plugin, CL = ns.plugin, ns.CL
 
-local LibSpec = LibStub("LibSpecialization")
-
 -- luacheck: globals C_ChatInfo UnitClassBase
 local wipe = table.wipe
 
@@ -11,9 +9,6 @@ local eventMap = ns.eventMap
 local unitEventMap = ns.unitEventMap
 local bossState = ns.bossState
 local groupState = ns.groupState
-
-local myName = plugin:UnitName("player")
-local myGUID = plugin:UnitGUID("player")
 
 local classColorMessages = true
 
@@ -43,6 +38,11 @@ function plugin:Hook(module)
 		module[name] = func
 	end
 
+	-- change the internal name used to show "on you" messages in target messages
+	if module.SetPlayerName then
+		module:SetPlayerName(self.myName, groupState[self.myName] and groupState[self.myName].class)
+	end
+
 	self:RegisterMessage("BigWigs_BarCreated")
 	self:RegisterMessage("BigWigs_BarEmphasized")
 end
@@ -52,6 +52,9 @@ function plugin:Unhook()
 	self:UnregisterMessage("BigWigs_BarEmphasized")
 
 	if hookModule then
+		if hookModule.SetPlayerName then
+			hookModule:SetPlayerName()
+		end
 		for name, func in next, hooks do
 			hookModule[name] = func
 		end
@@ -139,17 +142,6 @@ function hookFuncs.Engage(module, ...)
 	-- updateData
 	local messagesModule = BigWigs:GetPlugin("Messages", true)
 	classColorMessages = not messagesModule or messagesModule.db.profile.classcolor
-
-	local specId, role, position = LibSpec:MySpecialization()
-	groupState[myName] = {
-		name = myName,
-		class = UnitClassBase("player"),
-		guid = myGUID,
-		specId = specId,
-		role = role,
-		position = position,
-		unit = "player",
-	}
 end
 
 function hookFuncs.ColorName(module, player, overwrite)
@@ -172,6 +164,10 @@ function hookFuncs.ColorName(module, player, overwrite)
 		return tmp
 	end
 	return coloredName(player, classColorMessages or overwrite)
+end
+
+function hookFuncs.Me(module, guid)
+	return plugin.myGUID == guid
 end
 
 do
@@ -232,8 +228,20 @@ function hookFuncs.UnitTokenFromGUID(module, guid)
 end
 
 function hookFuncs.GetUnitTarget(module, func, _, guid)
-	C_Timer.After(0.1, function()
-		func(module, myName, myGUID, 0.1)
+	local delay = 0.1 / plugin.db.profile.speed
+	C_Timer.After(delay, function()
+		local targetName, targetGUID
+		for unit, info in next, bossState do
+			if info.guid == guid then
+				targetName = info.target
+				break
+			end
+		end
+		local player = groupState[targetName]
+		if player then
+			targetGUID = player.guid
+		end
+		func(module, targetName or "???", targetGUID or "", 0.1)
 	end)
 end
 
@@ -345,7 +353,7 @@ do
 			msg = module:SpellName(msg) or msg
 		end
 		if not directPrint then
-			msg = CL.on:format(msg, myName)
+			msg = CL.on:format(msg, plugin.myName)
 		end
 		local color = C_ChatInfo.GetColorForChatType("SAY")
 		print(color:WrapTextInColorCode(("SAY: %s"):format(msg)))
@@ -366,7 +374,7 @@ do
 			msg = module:SpellName(msg) or msg
 		end
 		if not directPrint then
-			msg = CL.on:format(msg, myName)
+			msg = CL.on:format(msg, plugin.myName)
 		end
 		local color = C_ChatInfo.GetColorForChatType("YELL")
 		print(color:WrapTextInColorCode(("YELL: %s"):format(msg)))
