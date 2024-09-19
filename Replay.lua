@@ -315,19 +315,6 @@ end
 do
 	-- throttle for "always on me"
 	local prev = 0
-	local function IsPrivateAura(module, spellId, time)
-		if not module.privateAuraSoundOptions then return end
-		if time - prev < 1.5 then return end
-
-		for _, opts in next, module.privateAuraSoundOptions do
-			for i = 1, #opts do
-				if opts[i] == spellId then
-					prev = time
-					return true
-				end
-			end
-		end
-	end
 
 	-- we rarely check flags, but add some for player/creature guids
 	local FLAGS_CREATURE = 0x00000848 -- npc, hostile, outside
@@ -353,6 +340,11 @@ do
 	end
 
 	function plugin:OnCombatEvent(time, event, ...)
+		local condensed
+		if event == "SPELL_DAMAGE[CONDENSED]" or event == "SPELL_PERIODIC_DAMAGE[CONDENSED]" then
+			event = event:sub(1, -12)
+			condensed = true
+		end
 		if not eventMap[event] then return end
 		if event == "UNIT_DIED" then
 			-- UNIT_DIED##nil#Creature-0-2085-2657-10253-63508-000022ACB3#Xuen#-1#false#nil#nil",
@@ -366,13 +358,18 @@ do
 		else
 			-- "SPELL_AURA_APPLIED#Player-4184-005DAF59#Drcornman#Player-4184-007A5B83#Tombom#451997#Viscous Overflow#BUFF#nil",
 			-- "SPELL_AURA_APPLIED#1300#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#453207#Lit Fuse#BUFF#nil#nil#nil#nil#nil",
-			local sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount
+			local sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount, extraSpellName
 			local numArgs = select("#", ...)
-			if numArgs == 8 or numArgs == 12 then -- no flags
-				sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
+			if condensed then
+				sourceGUID, sourceName, _, spellId, spellName = ...
+				destGUID, destName = self.myGUID, self.myName
 			else
-				sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
-				tonumber(sourceFlags)
+				if numArgs == 8 or numArgs == 12 then -- no flags
+					sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
+				else
+					sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
+					tonumber(sourceFlags)
+				end
 			end
 			spellId = tonumber(spellId)
 
@@ -404,19 +401,6 @@ do
 					self.module[func](self.module, args)
 				end
 			end
-			-- if event == "SPELL_AURA_APPLIED" and IsPrivateAura(self.module, spellId, time) then -- PA aren't gonna show up in TS, derp
-			-- 	-- private aura
-			-- 	ns.PulseIcon(GetSpellTexture(spellId))
-			-- 	local soundsModule = BigWigs:GetPlugin("Sounds", true)
-			-- 	if soundsModule then
-			-- 		local default = soundsModule:GetDefaultSound("privateaura")
-			-- 		local key = ("pa_%d"):format(spellId)
-			-- 		local sound = soundsModule:GetSoundFile(nil, nil, self.module.db.profile[key] or default)
-			-- 		if sound then
-			-- 			self:PlaySoundFile(sound)
-			-- 		end
-			-- 	end
-			-- end
 		end
 	end
 end

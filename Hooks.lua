@@ -81,7 +81,7 @@ end
 
 function hookFuncs.Log(module, event, func, ...)
 	hooks.Log(module, event, func, ...)
-	if FILTER_EVENTS[event] then
+	if FILTER_EVENTS[event] and func:match("Damage$") then
 		-- remove common damage handler (_DAMAGE is almost always after _AURA_APPLIED)
 		local auraEvents = eventMap["SPELL_AURA_APPLIED"]
 		if auraEvents then
