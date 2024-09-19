@@ -348,7 +348,7 @@ do
 		if not eventMap[event] then return end
 		if event == "UNIT_DIED" then
 			-- UNIT_DIED##nil#Creature-0-2085-2657-10253-63508-000022ACB3#Xuen#-1#false#nil#nil",
-			local _, destGUID, destName = ...
+			local _, _, destGUID, destName = ...
 			local mobId = tonumber(select(6, strsplit("-", destGUID)), 10)
 			local func = eventMap[event][mobId]
 			if func then
