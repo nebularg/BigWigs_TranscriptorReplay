@@ -379,6 +379,14 @@ do
 		return FLAGS_CREATURE
 	end
 
+	local function rename(module, key, default)
+		local renameModule = BigWigs:GetPlugin("Rename", true)
+		if not renameModule then
+			return default
+		end
+		return renameModule:GetName(module, key) or default
+	end
+
 	function plugin:OnCombatEvent(time, event, ...)
 		local condensed
 		if event == "SPELL_DAMAGE[CONDENSED]" or event == "SPELL_PERIODIC_DAMAGE[CONDENSED]" then
@@ -416,6 +424,7 @@ do
 			local func
 			if event == "SPELL_DISPEL" or event == "SPELL_INTERRUPT" then
 				extraSpellId = tonumber(extraSpellId)
+				extraSpellName = rename(self.module, extraSpellId, amount)
 				func = eventMap[event][extraSpellId] or eventMap[event]["*"]
 			else
 				func = eventMap[event][spellId] or eventMap[event]["*"]
@@ -433,7 +442,7 @@ do
 						args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, trimName(destName), setFlags(destGUID), 0
 					end
 				end
-				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
+				args.spellId, args.spellName, args.spellSchool = spellId, rename(self.module, spellId, spellName), 0
 				args.time, args.extraSpellId, args.extraSpellName, args.amount = (time + self.startTime), extraSpellId, extraSpellName or amount, tonumber(amount)
 				if self.module[func] then
 					self:Debug(time, event, func, args.spellId, args.spellName, args.destName)
