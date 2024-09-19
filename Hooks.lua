@@ -317,10 +317,7 @@ end
 
 function hookFuncs.DelayedMessage(module, key, delay, color, text, icon, sound)
 	local timeMod = plugin.db.profile.speed
-	if timeMod > 1 then
-		delay = delay / timeMod
-	end
-	hooks.DelayedMessage(module, key, delay, color, text, icon, sound)
+	hooks.DelayedMessage(module, key, delay / timeMod, color, text, icon, sound)
 end
 
 function hookFuncs.Berserk(module, seconds, noMessages, customBoss, customBerserk, customFinalMessage, customBarText)
@@ -435,9 +432,19 @@ do
 	end
 end
 
+function hookFuncs.SimpleTimer(module, func, delay)
+	local timeMod = plugin.db.profile.speed
+	C_Timer.After(delay / timeMod, func)
+end
+
+function hookFuncs.ScheduleTimer(module, func, delay, ...)
+	local timeMod = plugin.db.profile.speed
+	hooks.ScheduleTimer(module, func, delay / timeMod, ...)
+end
 
 -------------------------------------------------------------------------------
 -- Handle bars
+
 do
 	local function barUpdater(bar)
 		if plugin.db.profile.speed == 1 then return end
