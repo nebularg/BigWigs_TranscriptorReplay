@@ -392,7 +392,7 @@ do
 			local mobId = tonumber(select(6, strsplit("-", destGUID)), 10)
 			local func = eventMap[event][mobId]
 			if func then
-				args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags, args.time = mobId, destGUID, destName, setFlags(destGUID), 0, time
+				args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags, args.time = mobId, destGUID, destName, setFlags(destGUID), 0, (time + self.startTime)
 				self.module[func](self.module, args)
 			end
 		else
@@ -434,7 +434,7 @@ do
 					end
 				end
 				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
-				args.time, args.extraSpellId, args.extraSpellName, args.amount = time, extraSpellId, amount, tonumber(amount)
+				args.time, args.extraSpellId, args.extraSpellName, args.amount = (time + self.startTime), extraSpellId, extraSpellName or amount, tonumber(amount)
 				if self.module[func] then
 					self:Debug(time, event, func, args.spellId, args.spellName, args.destName)
 					self.args = args
