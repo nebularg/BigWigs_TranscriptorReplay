@@ -147,10 +147,10 @@ local function GetOptions()
 			if type == "BigWigs_SetStage" then
 				local encounter, stage = strsplit("#", info)
 				if not db_stage then
-					subvalues[startIndex] = ("<%s> Stage %d (Engage)"):format(secondsToTime(time), stage)
+					subvalues[startIndex] = ("<%s> Stage %s (Engage)"):format(secondsToTime(time), stage)
 					db_stage = startIndex
 				else
-					subvalues[i] = ("<%s> Stage %d"):format(secondsToTime(time), stage)
+					subvalues[i] = ("<%s> Stage %s"):format(secondsToTime(time), stage)
 				end
 			end
 		end
