@@ -126,6 +126,10 @@ function hookFuncs.Death(module, func, ...)
 	end
 end
 
+function hookFuncs.RegisterEvent(module, event, func)
+	eventMap[event] = func or event
+end
+
 function hookFuncs.RegisterUnitEvent(module, event, func, ...)
 	hooks.RegisterUnitEvent(module, event, func, ...)
 	unitEventMap[event] = func or event

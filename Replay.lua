@@ -472,6 +472,12 @@ function plugin:DoLine(line)
 			end
 		end
 
+	elseif type:sub(1, 8) == "CHAT_MSG" then
+		local func = eventMap[type]
+		if func and self.module[func] then
+			self.module[func](self.module, type, ("#"):split(info))
+		end
+
 	elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
 		-- "Fake Args:#boss1#true#true#true#Sikran#Creature-0-2085-2657-32297-214503-00007F16C8#elite#3179340000#boss2#false#false#false#??#nil#normal#0#boss3#false#false#false#??#nil#normal#0#boss4#false#false#false#??#nil#normal#0#boss5#false#false#false#??#nil#normal#0#Real Args:",
 		local t = {strsplit("#", info)}
