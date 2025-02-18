@@ -84,7 +84,7 @@ local function getLogLineTime(line)
 end
 
 local function getLogLineInfo(line)
-	local time, type, info = line:match("<(.-) .-> %[(.-)%] (.+)")
+	local time, type, info = line:match("<(.-) .-> %[(.-)%] (.*)")
 	time = tonumber(time)
 	return time, type, info
 end
