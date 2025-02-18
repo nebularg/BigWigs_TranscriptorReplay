@@ -479,6 +479,7 @@ function plugin:DoLine(line)
 		end
 
 	elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
+		-- instanceEncounterUnits = {}
 		-- "Fake Args:#boss1#true#true#true#Sikran#Creature-0-2085-2657-32297-214503-00007F16C8#elite#3179340000#boss2#false#false#false#??#nil#normal#0#boss3#false#false#false#??#nil#normal#0#boss4#false#false#false#??#nil#normal#0#boss5#false#false#false#??#nil#normal#0#Real Args:",
 		local t = {strsplit("#", info)}
 		for i = 2, #t - 1, 8 do -- skip Fake Args:/Real Args:
@@ -495,6 +496,40 @@ function plugin:DoLine(line)
 			boss.power = 0
 			boss.powerMax = 100
 		end
+
+	elseif type:sub(1, 4) == "IEEU" then
+		-- [IEEU boss1] Name#Captain Jolly#GUID#Creature-0-5773-1754-5006-126845-0000154FF6#Health#2040148#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true"
+		local unit = type:sub(6)
+		if not bossState[unit] then bossState[unit] = {} end
+		local name, guid, health, exists, visible, canAttack = info:match("Name#(.-)#GUID#(.-)#Health#(.-)#Exists#(.-)#Visible#(.-)#CanAttack#(.-)#ShowUninteractable#(.-)")
+
+		-- check for removed unit to update power and target
+		local previousUnit = nil
+		for bossUnit, bossInfo in next, bossState do
+			if unit == bossUnit then
+				break
+			elseif bossInfo.guid == guid then
+				previousUnit = unit
+				break
+			end
+		end
+		local boss
+		if previousUnit then
+			boss = bossState[previousUnit]
+			bossState[previousUnit] = wipe(bossState[unit])
+			bossState[unit] = boss
+		else
+			boss = bossState[unit]
+		end
+		boss.name = name
+		boss.guid = guid
+		boss.health = tonumber(health)
+		boss.exists = exists == "true" or false
+		boss.visible = visible == "true" or false
+		boss.canAttack = canAttack == "true" or false
+		boss.target = boss.target or nil
+		boss.power = boss.power or 0
+		boss.powerMax = boss.powerMax or 100
 
 	elseif type == "UNIT_TARGETABLE_CHANGED" then
 		-- -boss1- [CanAttack:true#Exists:true#IsVisible:true#Name:Ulgrax the Devourer#GUID:Creature-0-2085-2657-10253-215657-000022982C#Classification:elite#Health:494309999]
