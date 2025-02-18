@@ -404,14 +404,21 @@ do
 				self.module[func](self.module, args)
 			end
 		else
-			-- "SPELL_AURA_APPLIED#Player-4184-005DAF59#Drcornman#Player-4184-007A5B83#Tombom#451997#Viscous Overflow#BUFF#nil",
-			-- "SPELL_AURA_APPLIED#1300#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#453207#Lit Fuse#BUFF#nil#nil#nil#nil#nil",
 			local sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount, extraSpellName
 			local numArgs = select("#", ...)
 			if condensed then
 				sourceGUID, sourceName, _, spellId, spellName = ...
 				destGUID, destName = self.myGUID, self.myName
+			elseif event == "SWING_DAMAGE" then
+				-- SWING_DAMAGE#Creature-0-5773-2769-216-231935-0002817ADF#Junkyard Hyena#Player-5764-003FF3B3#Blåblåblå#811177#-1#nil#nil#false#false#nil#nil",
+				sourceGUID, sourceName, destGUID, destName, amount = ...
+			elseif event == "SPELL_DAMAGE" then
+				-- SPELL_DAMAGE#Player-5764-003F517F#Kíngflyhunt#Vehicle-0-5773-2769-216-230322-0000017ABE#Stix Bunkjunker#1217459#Lunar Storm",
+				sourceGUID, sourceName, destGUID, destName, spellId, spellName = ...
+				amount = 1
 			else
+				-- "SPELL_AURA_APPLIED#Player-4184-005DAF59#Drcornman#Player-4184-007A5B83#Tombom#451997#Viscous Overflow#BUFF#nil",
+				-- "SPELL_AURA_APPLIED#1300#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#453207#Lit Fuse#BUFF#nil#nil#nil#nil#nil",
 				if numArgs == 8 or numArgs == 12 then -- no flags
 					sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
 				else

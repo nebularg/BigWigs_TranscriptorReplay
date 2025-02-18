@@ -13,8 +13,8 @@ local groupState = ns.groupState
 local classColorMessages = true
 
 local FILTER_EVENTS = {
-	["SPELL_DAMAGE"] = true,
-	["SPELL_MISSED"] = true,
+	-- ["SPELL_DAMAGE"] = true,
+	-- ["SPELL_MISSED"] = true,
 	["SPELL_PERIODIC_DAMAGE"] = true,
 	["SPELL_PERIODIC_MISSED"] = true,
 }
