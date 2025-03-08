@@ -250,8 +250,12 @@ function hookFuncs.GetUnitTarget(module, func, _, guid)
 end
 
 function hookFuncs.Tanking(module, targetUnit, sourceUnit)
-	if bossState[targetUnit] then
-		return bossState[targetUnit].target == module:UnitName(sourceUnit)
+	local target = bossState[targetUnit] and bossState[targetUnit].target
+	if target then
+		if sourceUnit then
+			return target == hookFuncs.UnitName(module, sourceUnit)
+		end
+		return target == plugin.myName
 	end
 end
 
