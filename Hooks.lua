@@ -323,10 +323,11 @@ function hookFuncs.Mythic()
 	return plugin.difficulty == 8 or plugin.difficulty == 16 or plugin.difficulty == 23
 end
 
-function hookFuncs.DelayedMessage(module, key, delay, color, text, icon, sound)
-	local timeMod = plugin.db.profile.speed
-	hooks.DelayedMessage(module, key, delay / timeMod, color, text, icon, sound)
-end
+-- ScheduleTimer is already hooked
+-- function hookFuncs.DelayedMessage(module, key, delay, color, text, icon, sound)
+-- 	local timeMod = plugin.db.profile.speed
+-- 	hooks.DelayedMessage(module, key, delay / timeMod, color, text, icon, sound)
+-- end
 
 function hookFuncs.Berserk(module, seconds, noMessages, customBoss, customBerserk, customFinalMessage, customBarText)
 	-- remove all messages except final berserk (if used)
