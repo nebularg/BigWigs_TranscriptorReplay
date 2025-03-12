@@ -323,6 +323,12 @@ function hookFuncs.Mythic()
 	return plugin.difficulty == 8 or plugin.difficulty == 16 or plugin.difficulty == 23
 end
 
+function hookFuncs.Story()
+	return plugin.difficulty == 205
+		or plugin.difficulty == 216
+		or plugin.difficulty == 220
+end
+
 -- ScheduleTimer is already hooked
 -- function hookFuncs.DelayedMessage(module, key, delay, color, text, icon, sound)
 -- 	local timeMod = plugin.db.profile.speed
