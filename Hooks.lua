@@ -451,6 +451,13 @@ function hookFuncs.ScheduleTimer(module, func, delay, ...)
 	hooks.ScheduleTimer(module, func, delay / timeMod, ...)
 end
 
+function hookFuncs.AbbreviateNumber(module, amount)
+	if not amount then
+		return "???"
+	end
+	hooks.AbbreviateNumber(module, amount)
+end
+
 -------------------------------------------------------------------------------
 -- Handle bars
 
