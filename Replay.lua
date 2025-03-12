@@ -576,10 +576,20 @@ function plugin:DoLine(line)
 	elseif type == "ENCOUNTER_END" then
 		-- 2898#Sikran, Captain of the Sureki#16#20#1
 		local id, name, diff, size, status = strsplit("#", info)
-		-- win/wipe whatever, just play the sound without saving stats
+		-- avoid win/wipe callbacks to prevent stats
 		if self.module:GetEncounterID() == tonumber(id) then
-			self.module:Message(false, "green", ("%s has been defeated"):format(self.module.displayName), false, true)
-			self.module:PlayVictorySound()
+			if tonumber(status) == 1 then
+				self.module:Message(false, "green", ("%s has been defeated"):format(self.module.displayName), false, true)
+				self.module:PlayVictorySound()
+			else
+				self.module:Message(false, "yellow", ("You were defeated by %s"):format(self.module.displayName), false, true)
+				local wipeModule = BigWigs:GetPlugin("Wipe")
+				local sound = LibStub("LibSharedMedia-3.0"):Fetch("sound", wipeModule.db.profile.wipeSound, true)
+				if sound then
+					self.module:PlaySoundFile(sound, "master")
+				end
+			end
+			self:Stop(true)
 		end
 	end
 
