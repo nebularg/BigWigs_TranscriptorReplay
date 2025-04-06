@@ -15,8 +15,7 @@ ns.plugin, ns.CL = plugin, CL
 
 local LibSpec = LibStub("LibSpecialization")
 
--- luacheck: globals Transcriptor BigWigsTSR date GetSpellTexture C_Spell
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
+-- luacheck: globals Transcriptor BigWigsTSR date time
 local wipe = table.wipe
 
 BigWigsTSR = BigWigsTSR or {}
