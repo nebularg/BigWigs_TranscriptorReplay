@@ -730,7 +730,7 @@ function plugin:Play(index)
 
 	local nextLogTime = getLogLineTime(log[pos + offset])
 	local cd = math.max((nextLogTime - time) / timeMod, 0)
-	timer = self:ScheduleTimer("Play", cd, pos + offset)
+	timer = self:ScheduleTimer(function() self:Play(pos + offset) end, cd)
 end
 
 function plugin:Stop(silent)
