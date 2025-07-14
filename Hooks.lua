@@ -454,7 +454,7 @@ end
 
 function hookFuncs.ScheduleTimer(module, func, delay, ...)
 	local timeMod = plugin.db.profile.speed
-	hooks.ScheduleTimer(module, func, delay / timeMod, ...)
+	return hooks.ScheduleTimer(module, func, delay / timeMod, ...)
 end
 
 function hookFuncs.AbbreviateNumber(module, amount)
