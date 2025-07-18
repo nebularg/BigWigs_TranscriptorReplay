@@ -2,7 +2,7 @@ local _, ns = ...
 
 local plugin, CL = ns.plugin, ns.CL
 
--- luacheck: globals C_ChatInfo UnitClassBase
+-- luacheck: globals C_ChatInfo UnitClassBase print
 local wipe = table.wipe
 
 local eventMap = ns.eventMap

@@ -15,7 +15,7 @@ ns.plugin, ns.CL = plugin, CL
 
 local LibSpec = LibStub("LibSpecialization")
 
--- luacheck: globals Transcriptor BigWigsTSR date time
+-- luacheck: globals Transcriptor BigWigsTSR date time print
 local wipe = table.wipe
 
 BigWigsTSR = BigWigsTSR or {}
@@ -102,7 +102,7 @@ end
 
 local function secondsToTime(seconds)
 	local minutes = floor((seconds % 3600) / 60)
-	local seconds = floor(seconds % 60)
+	seconds = floor(seconds % 60)
 	return ("%02d:%02d"):format(minutes, seconds)
 end
 
@@ -254,7 +254,7 @@ local function GetOptions()
 					db_player = value
 					plugin:SetPlayer(db_player)
 				end,
-				values = function(info)
+				values = function()
 					local list = {}
 					for name, info in next, groupState do
 						local classColorInfo = RAID_CLASS_COLORS[info.class]
@@ -561,7 +561,7 @@ function plugin:DoLine(line)
 		local unit, _, target = strsplit("#", info)
 		local boss = bossState[unit]
 		if boss then
-			local target = target:sub(9)
+			target = target:sub(9)
 			if target == "??" then
 				target = nil
 			elseif groupState[target] then
@@ -640,17 +640,19 @@ function plugin:Load(logName, silent)
 	end
 
 	wipe(groupState)
-	local specId, role, position = LibSpec:MySpecialization()
-	groupState[myName] = {
-		unit = "player",
-		name = myName,
-		class = _G.UnitClassBase("player"),
-		guid = myGUID,
-		specId = specId,
-		role = role,
-		position = position,
-	}
-	groupCount = 1
+	do
+		local specId, role, position = LibSpec:MySpecialization()
+		groupState[myName] = {
+			unit = "player",
+			name = myName,
+			class = _G.UnitClassBase("player"),
+			guid = myGUID,
+			specId = specId,
+			role = role,
+			position = position,
+		}
+		groupCount = 1
+	end
 
 	local index = 1
 	local _, type, info, prev
