@@ -478,6 +478,12 @@ function plugin:DoLine(line)
 			end
 		end
 
+	elseif type == "CHAT_MSG_ADDON" then
+		local func = eventMap[type]
+		if func and info:sub(1, 22) == "RAID_BOSS_WHISPER_SYNC" then
+			self.module[func](self.module, select(2, ("#"):split(info)))
+		end
+
 	elseif type:sub(1, 8) == "CHAT_MSG" then
 		local func = eventMap[type]
 		if func and self.module[func] then

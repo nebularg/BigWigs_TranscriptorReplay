@@ -135,6 +135,12 @@ function hookFuncs.RegisterUnitEvent(module, event, func, ...)
 	unitEventMap[event] = func or event
 end
 
+function hookFuncs.RegisterWhisperEmoteComms(module, func)
+	if func then
+		eventMap["CHAT_MSG_ADDON"] = func
+	end
+end
+
 function hookFuncs.UnregisterUnitEvent(module, event, ...)
 	hooks.UnregisterUnitEvent(module, event, ...)
 	unitEventMap[event] = nil
