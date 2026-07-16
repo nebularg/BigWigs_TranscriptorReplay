@@ -28,6 +28,8 @@ local bossState = {boss1 = {}, boss2 = {}, boss3 = {}, boss4 = {}, boss5 = {}}
 ns.bossState = bossState
 local groupState = {}
 ns.groupState = groupState
+local timelineState = {}
+ns.timelineState = timelineState
 local alwaysThrottle = {}
 ns.alwaysThrottle = alwaysThrottle
 
@@ -109,6 +111,34 @@ local function secondsToTime(seconds)
 	seconds = floor(seconds % 60)
 	return ("%02d:%02d"):format(minutes, seconds)
 end
+
+local tonumberall do
+	local temp = {}
+	function tonumberall(...)
+		local n = select("#", ...)
+		-- Simple versions for common argument counts
+		if n == 1 then
+			local a = ...
+			return tonumber(a)
+		elseif n == 2 then
+			local a, b = ...
+			return tonumber(a), tonumber(b)
+		elseif n == 3 then
+			local a, b, c = ...
+			return tonumber(a), tonumber(b), tonumber(c)
+		elseif n == 0 then
+			return
+		end
+
+		wipe(temp)
+		for i = 1, n do
+			local v = select(i, ...)
+			temp[i] = type(v) ~= "number" and tonumber(v) or v
+		end
+		return unpack(temp)
+	end
+end
+
 
 -------------------------------------------------------------------------------
 -- Options
@@ -336,6 +366,7 @@ local function Reset()
 	for unit in next, bossState do
 		wipe(bossState[unit])
 	end
+	wipe(timelineState)
 	wipe(alwaysThrottle)
 end
 
@@ -469,6 +500,50 @@ function plugin:DoLine(line)
 
 	if type == "CLEU" then
 		self:OnCombatEvent(time, ("#"):split(info))
+
+	elseif type == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
+		-- "[ENCOUNTER_TIMELINE_EVENT_ADDED] State: 0 (Active)#id#272#source#0#spellName#<secret>#spellID#<secret>#iconFileID#<secret>#duration#8#maxQueueDuration#6#icons#<secret>#severity#<secret>#isApproximate#<secret>"
+		local state, eventID, source, duration, maxQueueDuration = tonumberall(info:match("State: (%d).-#id#(.-)#source#(.-)#.-#duration#(.-)#maxQueueDuration#(.-)#"))
+		self:Debug(time, type, duration)
+		local eventInfo = {
+			id = eventID,
+			state = state,
+			source = source,
+			duration = duration,
+			maxQueueDuration = maxQueueDuration,
+		}
+		timelineState[eventID] = eventInfo
+
+		local func = eventMap[type]
+		if func and self.module[func] then
+			self.module[func](self.module, type, eventInfo)
+		end
+
+	elseif type == "ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED" then
+		-- "[ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED] 272#State: 2 (Finished)"
+		local eventID, state = tonumberall(info:match("(%d+)#State: (%d)"))
+		if timelineState[eventID] then
+			timelineState[eventID].state = state
+		end
+
+		local func = eventMap[type]
+		if func and self.module[func] then
+			self.module[func](self.module, type, eventID)
+		end
+
+		-- if timelineState[eventID] and state > 1 then
+		-- 	timelineState[eventID] = nil
+		-- end
+
+	elseif type == "ENCOUNTER_TIMELINE_EVENT_REMOVED" then
+		-- "[ENCOUNTER_TIMELINE_EVENT_REMOVED] 272"
+		local eventID = tonumber(info)
+
+		local func = eventMap[type]
+		if func and self.module[func] then
+			self.module[func](self.module, type, eventID)
+		end
+		timelineState[eventID] = nil
 
 	elseif type:sub(1, 14) == "UNIT_SPELLCAST" then
 		-- "[UNIT_SPELLCAST_SUCCEEDED] Sikran(100.0%-0.0%){Target:??} -Energize- [[boss1:Cast-3-2085-2657-10253-436595-0010A2ACB0:436595]]"

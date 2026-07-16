@@ -9,6 +9,7 @@ local eventMap = ns.eventMap
 local unitEventMap = ns.unitEventMap
 local bossState = ns.bossState
 local groupState = ns.groupState
+local timelineState = ns.timelineState
 
 local classColorMessages = true
 
@@ -468,6 +469,18 @@ function hookFuncs.AbbreviateNumber(module, amount)
 		return "???"
 	end
 	return hooks.AbbreviateNumber(module, amount)
+end
+
+function hookFuncs.GetTimelineEventState(module, eventID)
+	return timelineState[eventID] and timelineState[eventID].state
+end
+
+function hookFuncs.GetTimelineEventCount(module, eventID)
+	local count = 0
+	for _ in next, timelineState do
+		count = count + 1
+	end
+	return count
 end
 
 -------------------------------------------------------------------------------
