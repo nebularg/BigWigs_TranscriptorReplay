@@ -546,14 +546,16 @@ function plugin:DoLine(line)
 		timelineState[eventID] = nil
 
 	elseif type:sub(1, 14) == "UNIT_SPELLCAST" then
-		-- "[UNIT_SPELLCAST_SUCCEEDED] Sikran(100.0%-0.0%){Target:??} -Energize- [[boss1:Cast-3-2085-2657-10253-436595-0010A2ACB0:436595]]"
+		-- [UNIT_SPELLCAST_SUCCEEDED] Sikran(100.0%-0.0%){Target:??} -Energize- [[boss1:Cast-3-2085-2657-10253-436595-0010A2ACB0:436595]]
+		-- [UNIT_SPELLCAST_SUCCEEDED] <secret>#<secret>#{Target:<secret>} [[boss1:<secret>:<secret>:1]]
 		local func = unitEventMap[type]
 		if func and self.module[func] then
-			-- "[[boss1:Cast-3-2085-2657-32297-432965-00AB7F16F4:432965]]",
-			local unit, castId, spellId = strsplit(":", info:match("%[%[(.-)%]%]"))
+			-- "[[boss1:Cast-3-2085-2657-32297-432965-00AB7F16F4:432965]]"
+			-- "[[boss1:<secret>:<secret>:1]]"
+			local unit, castGUID, spellID, castID = strsplit(":", info:match("%[%[(.-)%]%]"))
 			if unit:sub(1, 4) == "boss" then -- XXX do i actually need to restrict to the registered unit(s)?
-				-- self:Debug(time, type, unit, spellId) -- too spammy
-				self.module[func](self.module, type, unit, castId, tonumber(spellId))
+				-- self:Debug(time, type, unit, spellID) -- too spammy
+				self.module[func](self.module, type, unit, castGUID, spellID ~= "<secret>" and tonumber(spellID) or -1, tonumber(castID))
 			end
 		end
 
