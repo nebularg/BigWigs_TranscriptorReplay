@@ -49,7 +49,11 @@ local diffShort = {
 }
 
 local function getLogHeaderInfo(logName)
-	local year, month, day, hour, min, sec, zoneId, diff, diffName, instanceType, wowVersion = logName:match("^%[(%d+)-(%d+)-(%d+)%]@%[(%d+):(%d+):(%d+)%] %- Zone:(%d+) Difficulty:(%d+),(.+) Type:(.+) Version: (.+)$")
+	local year, month, day, hour, min, sec, zoneId, diff, instanceType, wowVersion, tsVersion = logName:match("^%[(%d+)-(%d+)-(%d+)%]@%[(%d+):(%d+):(%d+)%] %- Zone#(%d+).+#Difficulty#(%d+) %((.+)%)#Type#(.+)#WoWVer#(.+)#TSVer#(.+)$")
+	if not tsVersion then
+		year, month, day, hour, min, sec, zoneId, diff, instanceType, wowVersion = logName:match("^%[(%d+)-(%d+)-(%d+)%]@%[(%d+):(%d+):(%d+)%] %- Zone:(%d+) Difficulty:(%d+),.+ Type:(.+) Version: (.+)$")
+	end
+	if not wowVersion then return end
 	local timestamp = time({ day = day, month = month, year = year, hour = hour, min = min, sec = sec })
 	return timestamp, tonumber(zoneId), tonumber(diff), instanceType, wowVersion
 end
@@ -132,7 +136,7 @@ local function GetOptions()
 			local timestamp, zoneId, diff = getLogHeaderInfo(key)
 			local _, name, _, endIndex = getLogEncounterInfo(log.COMBAT)
 			if name and diff then
-				local diffName = diffShort[tonumber(diff)] or GetDifficultyInfo(diff) or diff
+				local diffName = diffShort[diff] or GetDifficultyInfo(diff) or diff
 				local length = getLogLineTime(log.COMBAT[endIndex or #log.COMBAT])
 				values[key] = ("[%s] %s <%s> [%s]"):format(diffName, name, secondsToTime(length), date("%F %T", timestamp))
 			end
@@ -612,7 +616,7 @@ function plugin:Load(logName, silent)
 	local logs = Transcriptor:GetAll()
 	local log = logs[logName]
 	if not log then
-		self:Print(("No log names %q found."):format(logName))
+		self:Print(("No log named %q found."):format(logName))
 		return
 	end
 	if not silent then
@@ -620,6 +624,10 @@ function plugin:Load(logName, silent)
 	end
 
 	local _, zoneId, diff = getLogHeaderInfo(logName)
+	if not zoneId then
+		self:Print("Unsupported log entry?")
+		return
+	end
 	local encounterId, encounterName, startIndex, endIndex = getLogEncounterInfo(log.total)
 	if not encounterId then
 		self:Print("No encounter events found?")
