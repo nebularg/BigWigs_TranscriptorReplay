@@ -569,37 +569,23 @@ function plugin:DoLine(line)
 			self.module[func](self.module, type, ("#"):split(info))
 		end
 
-	elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
-		-- instanceEncounterUnits = {}
-		-- "Fake Args:#boss1#true#true#true#Sikran#Creature-0-2085-2657-32297-214503-00007F16C8#elite#3179340000#boss2#false#false#false#??#nil#normal#0#boss3#false#false#false#??#nil#normal#0#boss4#false#false#false#??#nil#normal#0#boss5#false#false#false#??#nil#normal#0#Real Args:",
-		local t = {strsplit("#", info)}
-		for i = 2, #t - 1, 8 do -- skip Fake Args:/Real Args:
-			local unit = t[i]
-			if not bossState[unit] then bossState[unit] = {} end
-			local boss = bossState[unit]
-			boss.canAttack = t[i + 1] == "true" or false
-			boss.exists = t[i + 2] == "true" or false
-			boss.visible = t[i + 3] == "true" or false
-			boss.name = t[i + 4] ~= "??" and t[i + 4] or nil
-			boss.guid = t[i + 5] ~= "nil" and t[i + 6] or nil
-			boss.health = tonumber(t[i + 7])
-			boss.target = nil
-			boss.power = 0
-			boss.powerMax = 100
-		end
+	-- elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
+	-- 	-- instanceEncounterUnits = {}
 
 	elseif type:sub(1, 4) == "IEEU" then
-		-- [IEEU boss1] Name#Captain Jolly#GUID#Creature-0-5773-1754-5006-126845-0000154FF6#Health#2040148#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true"
+		-- [IEEU boss1] Name#Captain Jolly#GUID#Creature-0-5773-1754-5006-126845-0000154FF6#Health#2040148#MaxHealth#2040148#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
+		-- [IEEU boss1] Name#<secret>#GUID#<secret>#Health#<secret>#MaxHealth#<secret>#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
+		-- [IEEU boss2] Name#<secret>#GUID#<secret>#Health#<secret>#MaxHealth#<secret>#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
 		local unit = type:sub(6)
 		if not bossState[unit] then bossState[unit] = {} end
-		local name, guid, health, exists, visible, canAttack = info:match("Name#(.-)#GUID#(.-)#Health#(.-)#Exists#(.-)#Visible#(.-)#CanAttack#(.-)#ShowUninteractable#(.-)")
+		local name, guid, health, healthMax, exists, visible, canAttack = info:match("Name#(.-)#GUID#(.-)#Health#(.-)#MaxHealth#(.-)#Exists#(.-)#Visible#(.-)#CanAttack#(.-)#ShowUninteractable#(.-)")
 
 		-- check for removed unit to update power and target
 		local previousUnit = nil
 		for bossUnit, bossInfo in next, bossState do
 			if unit == bossUnit then
 				break
-			elseif bossInfo.guid == guid then
+			elseif bossInfo.guid and bossInfo.guid == guid then
 				previousUnit = unit
 				break
 			end
@@ -612,9 +598,10 @@ function plugin:DoLine(line)
 		else
 			boss = bossState[unit]
 		end
-		boss.name = name
-		boss.guid = guid
-		boss.health = tonumber(health)
+		boss.name = name ~= "<secret>" and name or false
+		boss.guid = guid ~= "<secret>" and guid or false
+		boss.health = health ~= "<secret>" and tonumber(health) or false
+		boss.healthMax = healthMax ~= "<secret>" and tonumber(healthMax) or false
 		boss.exists = exists == "true" or false
 		boss.visible = visible == "true" or false
 		boss.canAttack = canAttack == "true" or false
