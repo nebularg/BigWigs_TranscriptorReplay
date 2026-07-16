@@ -1,4 +1,4 @@
-## Interface: 11506, 20504, 30403, 40402, 110100, 110105
+## Interface: 11508, 11509, 20505, 20506, 30405, 38001, 40402, 50503, 50504, 120100, 120005, 120007
 ## Title: BigWigs |cffff0000+|r|cffffffffTranscriptorReplay|r
 ## Notes: "Play" Transcriptor logs to show BigWigs warnings.
 ## Author: Nebula
