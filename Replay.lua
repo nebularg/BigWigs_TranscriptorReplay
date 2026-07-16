@@ -619,18 +619,19 @@ function plugin:DoLine(line)
 			boss.canAttack = canAttack == "true" or false
 			boss.exists = exists == "true" or false
 			boss.visible = visible == "true" or false
-			boss.name = name ~= "??" and name or nil
-			-- boss.guid = guid ~= "nil" and guid or nil
-			-- boss.health = tonumber(health)
+			boss.name = name ~= "<secret>" and name ~= "??" and name or nil
+			-- boss.guid = guid ~= "<secret>" and guid ~= "nil" and guid or nil
+			-- boss.health =  health ~= "<secret>" and tonumber(health)
 		end
 	elseif type == "UNIT_TARGET" then
-		-- boss1#Sikran#Target: Tombom#TargetOfTarget: Sikran"
-		-- boss2#Anub'arash#Target: ??#TargetOfTarget: ??"
+		-- boss1#Sikran#Target: Tombom#TargetOfTarget: Sikran
+		-- boss2#Anub'arash#Target: ??#TargetOfTarget: ??
+		-- boss1#<secret>#Target: <secret>#TargetOfTarget: <secret>
 		local unit, _, target = strsplit("#", info)
 		local boss = bossState[unit]
 		if boss then
 			target = target:sub(9)
-			if target == "??" then
+			if target == "<secret>" or target == "??" then
 				target = nil
 			elseif groupState[target] then
 				target = groupState[target].name
