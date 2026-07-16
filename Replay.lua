@@ -647,10 +647,10 @@ function plugin:DoLine(line)
 		-- avoid win/wipe callbacks to prevent stats
 		if self.module:GetEncounterID() == tonumber(id) then
 			if tonumber(status) == 1 then
-				self.module:Message(false, "green", ("%s has been defeated"):format(self.module.displayName), false, true)
+				self.module:SendMessage("BigWigs_Message", nil, nil, ("%s has been defeated"):format(self.module.displayName), GREEN_FONT_COLOR, false, false)
 				self.module:PlayVictorySound()
 			else
-				self.module:Message(false, "yellow", ("You were defeated by %s"):format(self.module.displayName), false, true)
+				self.module:SendMessage("BigWigs_Message", nil, nil, ("You were defeated by %s"):format(self.module.displayName), YELLOW_FONT_COLOR, false, false)
 				local wipeModule = BigWigs:GetPlugin("Wipe")
 				local sound = LibStub("LibSharedMedia-3.0"):Fetch("sound", wipeModule.db.profile.wipeSound, true)
 				if sound then
@@ -779,7 +779,7 @@ function plugin:Play(index)
 
 		if not index or index == self.startIndex then
 			module:Engage()
-			module:Message(false, "yellow", ("%s engaged"):format(module.displayName), false, true)
+			module:SendMessage("BigWigs_Message", nil, nil, ("%s engaged"):format(module.displayName), YELLOW_FONT_COLOR, false, false)
 		else
 			module:Engage("NoEngage")
 			-- this is ok because we're using the BigWigs_SetStage line to start mid-encounter
@@ -787,8 +787,10 @@ function plugin:Play(index)
 			if stage and module.stage ~= stage then
 				module:SetStage(stage)
 			end
+			-- module:SendMessage("BigWigs_Message", nil, nil, "Replay started", WHITE_FONT_COLOR, false, false)
 		end
-		module:Bar(false, self.endLogTime - self.startLogTime, "Log Duration", "spell_holy_borrowedtime")
+		local duration = self.endLogTime - self.startLogTime
+		module:SendMessage("BigWigs_StartBar", module, nil, "Log Duration", duration, "Interface\\Icons\\spell_holy_borrowedtime", false)
 
 		self:UpdateGUI()
 	end
