@@ -797,17 +797,19 @@ function plugin:Play(index)
 
 	local pos = index or self.startIndex
 	local timeMod = self.db.profile.speed
-	local elapsed = (GetTime() - self.startTime) * timeMod
-	local time
-	local offset = 0
+	local elapsed = ((GetTime() - self.startTime) * timeMod) + self.startLogTime
+	local currentLogTime, nextLogTime
 	repeat -- batch events at the same timestamp and catch up from scheduling drift
-		time = self:DoLine(log[pos + offset])
-		offset = offset + 1
-	until time > (elapsed + self.startLogTime)
+		currentLogTime = self:DoLine(log[pos])
+		pos = pos + 1
+		if pos > self.endIndex then
+			return self:Play(pos)
+		end
+		nextLogTime = getLogLineTime(log[pos])
+	until nextLogTime > elapsed
 
-	local nextLogTime = getLogLineTime(log[pos + offset])
-	local cd = math.max((nextLogTime - time) / timeMod, 0)
-	timer = self:ScheduleTimer(function() self:Play(pos + offset) end, cd)
+	local sleep = math.max((nextLogTime - currentLogTime) / timeMod, 0)
+	timer = self:ScheduleTimer(function() self:Play(pos) end, sleep)
 end
 
 function plugin:Stop(silent)
