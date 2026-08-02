@@ -353,12 +353,16 @@ plugin.subPanelOptions = {
 --
 
 function plugin:Print(...)
-	print("|cffffff00TranscriptorReplay:|r", ...)
+	print("|cnYELLOW_FONT_COLOR:TSR:|r", ...)
 end
 
 function plugin:Debug(...)
-	if db_debug then
-		self:Print("|cff87abff[DEBUG]|r", ...)
+	if not db_debug then return end
+	if self.startTime then
+		local elapsed = ((GetTime() - self.startTime) * self.db.profile.speed) + self.startLogTime
+		self:Print("|cnLIGHTBLUE_FONT_COLOR:[D]|r", ("|cnCOMMON_GRAY_COLOR:%.1f|r"):format(elapsed), ...)
+	else
+		self:Print("|cnLIGHTBLUE_FONT_COLOR:[D]|r", ...)
 	end
 end
 
