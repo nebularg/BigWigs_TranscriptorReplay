@@ -15,7 +15,7 @@ ns.plugin, ns.CL = plugin, CL
 
 local LibSpec = LibStub("LibSpecialization")
 
--- luacheck: globals Transcriptor BigWigsTSR date time print
+-- luacheck: globals Transcriptor BigWigsTSR date time print tInvert Enum
 local wipe = table.wipe
 
 BigWigsTSR = BigWigsTSR or {}
@@ -41,7 +41,7 @@ plugin.myGUID = myGUID
 local groupCount = nil
 local timer = nil
 
-local diffShort = {
+local DIFF_NAME_SHORT = {
 	[1] = "N", [3] = "N", [4] = "N", [14] = "N", [150] = "N~", [205] = "F",
 	[2] = "H", [5] = "H", [6] = "H", [15] = "H",
 	[7] = "LFR", [17] = "LFR", [151] = "LFR",
@@ -51,6 +51,8 @@ local diffShort = {
 	[220] = "S",
 	[236] = "LW", [241] = "LW",
 }
+
+local STATE_NAME = tInvert(Enum.EncounterTimelineEventState)
 
 local function getLogHeaderInfo(logName)
 	local year, month, day, hour, min, sec, zoneId, diff, instanceType, wowVersion, tsVersion = logName:match("^%[(%d+)-(%d+)-(%d+)%]@%[(%d+):(%d+):(%d+)%] %- Zone#(%d+).+#Difficulty#(%d+) %((.+)%)#Type#(.+)#WoWVer#(.+)#TSVer#(.+)$")
@@ -168,7 +170,7 @@ local function GetOptions()
 			local timestamp, zoneId, diff = getLogHeaderInfo(key)
 			local _, name, _, endIndex = getLogEncounterInfo(log.COMBAT)
 			if name and diff then
-				local diffName = diffShort[diff] or GetDifficultyInfo(diff) or diff
+				local diffName = DIFF_NAME_SHORT[diff] or GetDifficultyInfo(diff) or diff
 				local length = getLogLineTime(log.COMBAT[endIndex or #log.COMBAT])
 				values[key] = ("[%s] %s <%s> [%s]"):format(diffName, name, secondsToTime(length), date("%F %T", timestamp))
 			end
@@ -484,7 +486,7 @@ do
 				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
 				args.time, args.extraSpellId, args.extraSpellName, args.amount = (time + self.startTime), extraSpellId, extraSpellName or amount, tonumber(amount)
 				if self.module[func] then
-					self:Debug(time, event, func, args.spellId, args.spellName, args.destName)
+					self:Debug(("|cnVISUAL_ALERT_COLOR_CYAN:%s|r"):format(event), func, args.spellId, args.spellName, args.destName)
 					self.args = args
 					self.module[func](self.module, args)
 				end
@@ -502,7 +504,8 @@ function plugin:DoLine(line)
 	elseif type == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_ADDED] State: 0 (Active)#id#272#source#0#spellName#<secret>#spellID#<secret>#iconFileID#<secret>#duration#8#maxQueueDuration#6#icons#<secret>#severity#<secret>#isApproximate#<secret>"
 		local state, eventID, source, duration, maxQueueDuration = tonumberall(info:match("State: (%d).-#id#(.-)#source#(.-)#.-#duration#(.-)#maxQueueDuration#(.-)#"))
-		self:Debug(time, type, duration)
+		self:Debug(("|cnVISUAL_ALERT_COLOR_GREEN:ADDED %d|r"):format(eventID), duration)
+
 		local eventInfo = {
 			id = eventID,
 			state = state,
@@ -520,6 +523,8 @@ function plugin:DoLine(line)
 	elseif type == "ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED] 272#State: 2 (Finished)"
 		local eventID, state = tonumberall(info:match("(%d+)#State: (%d)"))
+		self:Debug(("|cnVISUAL_ALERT_COLOR_GOLD:CHANGED %d|r"):format(eventID), ("|cnVISUAL_ALERT_COLOR_CYAN:%s|r"):format(STATE_NAME[state] or state))
+
 		if timelineState[eventID] then
 			timelineState[eventID].state = state
 		end
@@ -529,18 +534,16 @@ function plugin:DoLine(line)
 			self.module[func](self.module, type, eventID)
 		end
 
-		-- if timelineState[eventID] and state > 1 then
-		-- 	timelineState[eventID] = nil
-		-- end
-
 	elseif type == "ENCOUNTER_TIMELINE_EVENT_REMOVED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_REMOVED] 272"
 		local eventID = tonumber(info)
+		self:Debug(("|cnVISUAL_ALERT_COLOR_RED:REMOVED %d|r"):format(eventID))
 
 		local func = eventMap[type]
 		if func and self.module[func] then
 			self.module[func](self.module, type, eventID)
 		end
+
 		timelineState[eventID] = nil
 
 	elseif type:sub(1, 14) == "UNIT_SPELLCAST" then
