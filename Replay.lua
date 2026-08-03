@@ -181,11 +181,11 @@ local function GetOptions()
 		db_stage = nil
 		wipe(subvalues)
 		local log = logs[logName].total
-		local _, name, startIndex, endIndex = getLogEncounterInfo(log)
+		local _, _, startIndex, endIndex = getLogEncounterInfo(log)
 		for i = startIndex, endIndex do
 			local time, type, info = getLogLineInfo(log[i])
 			if type == "BigWigs_SetStage" then
-				local encounter, stage = strsplit("#", info)
+				local _, stage = strsplit("#", info)
 				if not db_stage then
 					subvalues[startIndex] = ("<%s> Stage %s (Engage)"):format(secondsToTime(time), stage)
 					db_stage = startIndex
