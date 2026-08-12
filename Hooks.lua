@@ -2,11 +2,12 @@ local _, ns = ...
 
 local plugin, CL = ns.plugin, ns.CL
 
--- luacheck: globals C_ChatInfo UnitClassBase print
+-- luacheck: globals C_ChatInfo UnitClassBase print secretwrap
 local wipe = table.wipe
 
 local eventMap = ns.eventMap
 local unitEventMap = ns.unitEventMap
+local ieeuEvents = ns.ieeuEvents
 local bossState = ns.bossState
 local groupState = ns.groupState
 local timelineState = ns.timelineState
@@ -133,7 +134,17 @@ end
 
 function hookFuncs.RegisterUnitEvent(module, event, func, ...)
 	hooks.RegisterUnitEvent(module, event, func, ...)
-	unitEventMap[event] = func or event
+	if not unitEventMap[event] then
+		unitEventMap[event] = {}
+	end
+	if not func then
+		func = event
+	end
+
+	for i = 1, select("#", ...) do
+		local unit = select(i, ...)
+		unitEventMap[event][unit] = func
+	end
 end
 
 function hookFuncs.RegisterWhisperEmoteComms(module, func)
@@ -144,7 +155,23 @@ end
 
 function hookFuncs.UnregisterUnitEvent(module, event, ...)
 	hooks.UnregisterUnitEvent(module, event, ...)
-	unitEventMap[event] = nil
+	if unitEventMap[event] then
+		for i = 1, select("#", ...) do
+			local unit = select(i, ...)
+			unitEventMap[event][unit] = nil
+		end
+		if not next(unitEventMap[event]) then
+			unitEventMap[event] = nil
+		end
+	end
+end
+
+function hookFuncs.RegisterBossEvent(module, bossID, func)
+	ieeuEvents[bossID] = func
+end
+
+function hookFuncs.UnregisterBossEvent(module, bossID)
+	ieeuEvents[bossID] = nil
 end
 
 function hookFuncs.Engage(module, ...)
@@ -189,16 +216,16 @@ do
 
 	function hookFuncs.UnitName(module, unit)
 		if bossState[unit] then
-			return bossState[unit].name
+			return secretwrap(unit) --bossState[unit].name
 		else
 			local boss = bosstargets[unit]
 			if bossState[boss] then
-				return bossState[boss].target
+				return secretwrap(unit.."target") -- bossState[boss].target
 			end
 		end
 		for name, info in next, groupState do
 			if name == unit or info.unit == unit then
-				return info.name
+				return secretwrap(info.name)
 			end
 		end
 		return hooks.UnitName(module, unit)
@@ -207,11 +234,11 @@ end
 
 function hookFuncs.UnitGUID(module, unit)
 	if bossState[unit] then
-		return bossState[unit].guid
+		return secretwrap(unit) -- bossState[unit].guid
 	end
 	for name, info in next, groupState do
 		if name == unit or info.unit == unit then
-			return info.guid
+			return secretwrap(unit) -- info.guid
 		end
 	end
 	return hooks.UnitGUID(module, unit)

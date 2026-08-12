@@ -24,6 +24,8 @@ local eventMap = {}
 ns.eventMap = eventMap
 local unitEventMap = {}
 ns.unitEventMap = unitEventMap
+local ieeuEvents = {}
+ns.ieeuEvents = ieeuEvents
 local bossState = {boss1 = {}, boss2 = {}, boss3 = {}, boss4 = {}, boss5 = {}}
 ns.bossState = bossState
 local groupState = {}
@@ -496,12 +498,12 @@ do
 end
 
 function plugin:DoLine(line)
-	local time, type, info = getLogLineInfo(line)
+	local time, event, info = getLogLineInfo(line)
 
-	if type == "CLEU" then
+	if event == "CLEU" then
 		self:OnCombatEvent(time, ("#"):split(info))
 
-	elseif type == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
+	elseif event == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_ADDED] State: 0 (Active)#id#272#source#0#spellName#<secret>#spellID#<secret>#iconFileID#<secret>#duration#8#maxQueueDuration#6#icons#<secret>#severity#<secret>#isApproximate#<secret>"
 		local state, eventID, source, duration, maxQueueDuration = tonumberall(info:match("State: (%d).-#id#(.-)#source#(.-)#.-#duration#(.-)#maxQueueDuration#(.-)#"))
 		self:Debug(("|cnVISUAL_ALERT_COLOR_GREEN:ADDED %d|r"):format(eventID), duration)
@@ -515,12 +517,12 @@ function plugin:DoLine(line)
 		}
 		timelineState[eventID] = eventInfo
 
-		local func = eventMap[type]
+		local func = eventMap[event]
 		if func and self.module[func] then
-			self.module[func](self.module, type, eventInfo)
+			self.module[func](self.module, event, eventInfo)
 		end
 
-	elseif type == "ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED" then
+	elseif event == "ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_STATE_CHANGED] 272#State: 2 (Finished)"
 		local eventID, state = tonumberall(info:match("(%d+)#State: (%d)"))
 		self:Debug(("|cnVISUAL_ALERT_COLOR_GOLD:CHANGED %d|r"):format(eventID), ("|cnVISUAL_ALERT_COLOR_CYAN:%s|r"):format(STATE_NAME[state] or state))
@@ -529,57 +531,70 @@ function plugin:DoLine(line)
 			timelineState[eventID].state = state
 		end
 
-		local func = eventMap[type]
+		local func = eventMap[event]
 		if func and self.module[func] then
-			self.module[func](self.module, type, eventID)
+			self.module[func](self.module, event, eventID)
 		end
 
-	elseif type == "ENCOUNTER_TIMELINE_EVENT_REMOVED" then
+	elseif event == "ENCOUNTER_TIMELINE_EVENT_REMOVED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_REMOVED] 272"
 		local eventID = tonumber(info)
 		self:Debug(("|cnVISUAL_ALERT_COLOR_RED:REMOVED %d|r"):format(eventID))
 
-		local func = eventMap[type]
+		local func = eventMap[event]
 		if func and self.module[func] then
-			self.module[func](self.module, type, eventID)
+			self.module[func](self.module, event, eventID)
 		end
 
 		timelineState[eventID] = nil
 
-	elseif type:sub(1, 14) == "UNIT_SPELLCAST" then
-		-- [UNIT_SPELLCAST_SUCCEEDED] Sikran(100.0%-0.0%){Target:??} -Energize- [[boss1:Cast-3-2085-2657-10253-436595-0010A2ACB0:436595]]
+	elseif event:sub(1, 14) == "UNIT_SPELLCAST" then
 		-- [UNIT_SPELLCAST_SUCCEEDED] <secret>#<secret>#{Target:<secret>} [[boss1:<secret>:<secret>:1]]
-		local func = unitEventMap[type]
-		if func and self.module[func] then
-			-- "[[boss1:Cast-3-2085-2657-32297-432965-00AB7F16F4:432965]]"
-			-- "[[boss1:<secret>:<secret>:1]]"
-			local unit, castGUID, spellID, castID = strsplit(":", info:match("%[%[(.-)%]%]"))
-			if unit:sub(1, 4) == "boss" then -- XXX do i actually need to restrict to the registered unit(s)?
-				-- self:Debug(time, type, unit, spellID) -- too spammy
-				self.module[func](self.module, type, unit, castGUID, spellID ~= "<secret>" and tonumber(spellID) or -1, tonumber(castID))
+		local payload = {strsplit(":", info:match("%[%[(.-)%]%]"))}
+		local unit = table.remove(payload, 1)
+		if event == "UNIT_SPELLCAST_SENT" then -- no castID
+			payload[3] = payload[3] ~= "<secret>" and tonumber(payload[3]) or -1 -- spellID
+		elseif #payload > 0 then -- more than just the unit
+			payload[2] = payload[2] ~= "<secret>" and tonumber(payload[2]) or -1 -- spellID
+			if #payload > 2 then -- has a castID
+				payload[#payload] = tonumber(payload[#payload])
 			end
 		end
 
-	elseif type == "CHAT_MSG_ADDON" then
-		local func = eventMap[type]
+		local func = unitEventMap[event] and unitEventMap[event][unit]
+		if func and self.module[func] then
+			self.module[func](self.module, event, unit, unpack(payload))
+		else
+			func = eventMap[event]
+			if func and self.module[func] then
+				self.module[func](self.module, event, unit, unpack(payload))
+			end
+		end
+
+	elseif event == "CHAT_MSG_ADDON" then
+		local func = eventMap[event]
 		if func and info:sub(1, 22) == "RAID_BOSS_WHISPER_SYNC" then
 			self.module[func](self.module, select(2, ("#"):split(info)))
 		end
 
-	elseif type:sub(1, 8) == "CHAT_MSG" then
-		local func = eventMap[type]
+	elseif event:sub(1, 8) == "CHAT_MSG" then
+		local func = eventMap[event]
 		if func and self.module[func] then
-			self.module[func](self.module, type, ("#"):split(info))
+			self.module[func](self.module, event, ("#"):split(info))
 		end
 
-	-- elseif type == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
-	-- 	-- instanceEncounterUnits = {}
+	-- elseif event == "INSTANCE_ENCOUNTER_ENGAGE_UNIT" then
+	-- 	XXX this fires before IEEU, so we don't have the boss info yet and don't know how many IEEU to expect x.x
+	-- 	local func = eventMap[event]
+	-- 	if func and self.module[func] then
+	-- 		self.module[func](self.module, event)
+	-- 	end
 
-	elseif type:sub(1, 4) == "IEEU" then
+	elseif event:sub(1, 4) == "IEEU" then
 		-- [IEEU boss1] Name#Captain Jolly#GUID#Creature-0-5773-1754-5006-126845-0000154FF6#Health#2040148#MaxHealth#2040148#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
 		-- [IEEU boss1] Name#<secret>#GUID#<secret>#Health#<secret>#MaxHealth#<secret>#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
 		-- [IEEU boss2] Name#<secret>#GUID#<secret>#Health#<secret>#MaxHealth#<secret>#Exists#true#Visible#true#CanAttack#true#ShowUninteractable#true
-		local unit = type:sub(6)
+		local unit = event:sub(6)
 		if not bossState[unit] then bossState[unit] = {} end
 		local name, guid, health, healthMax, exists, visible, canAttack = info:match("Name#(.-)#GUID#(.-)#Health#(.-)#MaxHealth#(.-)#Exists#(.-)#Visible#(.-)#CanAttack#(.-)#ShowUninteractable#(.-)")
 
@@ -612,7 +627,21 @@ function plugin:DoLine(line)
 		boss.power = boss.power or 0
 		boss.powerMax = boss.powerMax or 100
 
-	elseif type == "UNIT_TARGETABLE_CHANGED" then
+		-- if not next(ieeuEvents) then
+		-- 	local func = eventMap["INSTANCE_ENCOUNTER_ENGAGE_UNIT"]
+		-- 	if func and self.module[func] then
+		-- 		self.module[func](self.module, "INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+		-- 	end
+		-- else
+			local func = ieeuEvents[unit]
+			if type(func) == "function" then
+				func(nil, unit)
+			elseif func then
+				self.module[func](self.module, nil, unit)
+			end
+		-- end
+
+	elseif event == "UNIT_TARGETABLE_CHANGED" then
 		-- -boss1- [CanAttack:true#Exists:true#IsVisible:true#Name:Ulgrax the Devourer#GUID:Creature-0-2085-2657-10253-215657-000022982C#Classification:elite#Health:494309999]
 		local unit, canAttack, exists, visible, name, guid, _, health = info:match("%-(.-)%- %[CanAttack:(.-)#Exists:(.-)#IsVisible:(.-)#Name:(.-)#GUID:(.-)#Classification:(.-)#Health:(.-)%]")
 		local boss = bossState[unit]
@@ -624,7 +653,7 @@ function plugin:DoLine(line)
 			-- boss.guid = guid ~= "<secret>" and guid ~= "nil" and guid or nil
 			-- boss.health =  health ~= "<secret>" and tonumber(health)
 		end
-	elseif type == "UNIT_TARGET" then
+	elseif event == "UNIT_TARGET" then
 		-- boss1#Sikran#Target: Tombom#TargetOfTarget: Sikran
 		-- boss2#Anub'arash#Target: ??#TargetOfTarget: ??
 		-- boss1#<secret>#Target: <secret>#TargetOfTarget: <secret>
@@ -640,7 +669,7 @@ function plugin:DoLine(line)
 			boss.target = target
 		end
 
-	elseif type == "UNIT_POWER_UPDATE" then
+	elseif event == "UNIT_POWER_UPDATE" then
 		-- boss1#Sikran#TYPE:ENERGY/3#MAIN:4/100#ALT:0/0"
 		local unit, _, _, power, altpower = strsplit("#", info)
 		local boss = bossState[unit]
@@ -648,7 +677,7 @@ function plugin:DoLine(line)
 			boss.power, boss.powerMax = strsplit("/", power:sub(6))
 		end
 
-	elseif type == "ENCOUNTER_END" then
+	elseif event == "ENCOUNTER_END" then
 		-- 2898#Sikran, Captain of the Sureki#16#20#1
 		local id, name, diff, size, status = strsplit("#", info)
 		-- avoid win/wipe callbacks to prevent stats
