@@ -695,6 +695,9 @@ function plugin:DoLine(line)
 			end
 			self:Stop(true)
 		end
+
+	elseif event == "BigWigs_Debug" then
+		self:Debug(strsplit("#", info))
 	end
 
 	return time
