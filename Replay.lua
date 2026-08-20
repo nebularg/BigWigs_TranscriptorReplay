@@ -32,8 +32,6 @@ local groupState = {}
 ns.groupState = groupState
 local timelineState = {}
 ns.timelineState = timelineState
-local alwaysThrottle = {}
-ns.alwaysThrottle = alwaysThrottle
 
 local args = {}
 local myName = plugin:UnitName("player")
@@ -151,7 +149,6 @@ end
 --
 
 plugin.defaultDB = {
-	always_me = false,
 	ignore_role = false,
 	speed = 2,
 }
@@ -223,16 +220,12 @@ local function GetOptions()
 				width = "full",
 				order = 1,
 			},
-			always_me = {
+			debug = {
 				type = "toggle",
-				name = "Always on me",
-				desc = "Make all debuffs target you.",
-				get = function(info) return db.always_me end,
-				set = function(info, value)
-					db.always_me = value
-					db_player = nil
-					plugin:SetPlayer(myName)
-				end,
+				name = "Debug",
+				desc = "Show internal debug messages.",
+				get = function(info) return db_debug end,
+				set = function(info, value) db_debug = value end,
 				order = 2,
 			},
 			-- ignore_role = {
@@ -310,7 +303,7 @@ local function GetOptions()
 					return list
 				end,
 				order = 12,
-				disabled = function() return db.always_me or not next(groupState) or plugin:IsPlaying() end,
+				disabled = function() return not next(groupState) or plugin:IsPlaying() end,
 			},
 			play = {
 				type = "execute",
@@ -331,14 +324,6 @@ local function GetOptions()
 				name = "",
 				order = 30,
 				width = "full",
-			},
-			debug = {
-				type = "toggle",
-				name = "Debug",
-				desc = "Show internal debug messages.",
-				get = function(info) return db_debug end,
-				set = function(info, value) db_debug = value end,
-				order = 31,
 			},
 			-- create = {
 			-- 	type = "execute",
@@ -384,133 +369,23 @@ local function Reset()
 		wipe(bossState[unit])
 	end
 	wipe(timelineState)
-	wipe(alwaysThrottle)
 end
 
 -------------------------------------------------------------------------------
 -- Log events
 
 function plugin:SetPlayer(name)
-	if name == myName then
-		self.myName = myName
-		self.myGUID = myGUID
-	else
-		local info = groupState[name]
-		if info then
-			self.myName = info.name
-			self.myGUID = info.guid
-		end
-	end
-end
-
-do
-	-- throttle for "always on me"
-	local prev = 0
-
-	-- we rarely check flags, but add some for player/creature guids
-	local FLAGS_CREATURE = 0x00000848 -- npc, hostile, outside
-	local FLAGS_PLAYER = 0x00000414 -- player, friendly, raid
-	local FLAGS_ME = 0x00000411 -- player, friendly, mine
-
-	local AURA_EVENTS = {
-		["SPELL_AURA_APPLIED"] = true, ["SPELL_AURA_APPLIED_DOSE"] = true,
-		["SPELL_AURA_REFRESH"] = true,
-		["SPELL_AURA_REMOVED"] = true, ["SPELL_AURA_REMOVED_DOSE"] = true,
-	}
-
-	local function trimName(name)
-		name = name:gsub("%([^)]+%%%)$", "") -- remove health info
-		return name
-	end
-
-	local function setFlags(guid)
-		if guid:find("^Player") then
-			return FLAGS_PLAYER
-		end
-		return FLAGS_CREATURE
-	end
-
-	function plugin:OnCombatEvent(time, event, ...)
-		local condensed
-		if event == "SPELL_DAMAGE[CONDENSED]" or event == "SPELL_PERIODIC_DAMAGE[CONDENSED]" then
-			event = event:sub(1, -12)
-			condensed = true
-		end
-		if not eventMap[event] then return end
-		if event == "UNIT_DIED" then
-			-- UNIT_DIED##nil#Creature-0-2085-2657-10253-63508-000022ACB3#Xuen#-1#false#nil#nil",
-			local _, _, destGUID, destName = ...
-			local mobId = tonumber(select(6, strsplit("-", destGUID)), 10)
-			local func = eventMap[event][mobId]
-			if func then
-				args.mobId, args.destGUID, args.destName, args.destFlags, args.destRaidFlags, args.time = mobId, destGUID, destName, setFlags(destGUID), 0, (time + self.startTime)
-				self.module[func](self.module, args)
-			end
-		else
-			local sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount, extraSpellName
-			local numArgs = select("#", ...)
-			if condensed then
-				sourceGUID, sourceName, _, spellId, spellName = ...
-				destGUID, destName = self.myGUID, self.myName
-			elseif event == "SWING_DAMAGE" then
-				-- SWING_DAMAGE#Creature-0-5773-2769-216-231935-0002817ADF#Junkyard Hyena#Player-5764-003FF3B3#Blåblåblå#811177#-1#nil#nil#false#false#nil#nil",
-				sourceGUID, sourceName, destGUID, destName, amount = ...
-			elseif event == "SPELL_DAMAGE" then
-				-- SPELL_DAMAGE#Player-5764-003F517F#Kíngflyhunt#Vehicle-0-5773-2769-216-230322-0000017ABE#Stix Bunkjunker#1217459#Lunar Storm",
-				sourceGUID, sourceName, destGUID, destName, spellId, spellName = ...
-				amount = 1
-			else
-				-- "SPELL_AURA_APPLIED#Player-4184-005DAF59#Drcornman#Player-4184-007A5B83#Tombom#451997#Viscous Overflow#BUFF#nil",
-				-- "SPELL_AURA_APPLIED#1300#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#Player-3725-0AEEF0CE#Eldunarí-Frostmourne#453207#Lit Fuse#BUFF#nil#nil#nil#nil#nil",
-				if numArgs == 8 or numArgs == 12 then -- no flags
-					sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
-				else
-					sourceFlags, sourceGUID, sourceName, destGUID, destName, spellId, spellName, extraSpellId, amount = ...
-					tonumber(sourceFlags)
-				end
-			end
-			spellId = tonumber(spellId)
-
-			local func
-			if event == "SPELL_DISPEL" or event == "SPELL_INTERRUPT" then
-				extraSpellId = tonumber(extraSpellId)
-				extraSpellName = amount
-				func = eventMap[event][extraSpellId] or eventMap[event]["*"]
-			else
-				func = eventMap[event][spellId] or eventMap[event]["*"]
-			end
-			if func then
-				args.sourceGUID, args.sourceName, args.sourceFlags, args.sourceRaidFlags = sourceGUID, trimName(sourceName), sourceFlags or setFlags(sourceGUID), 0
-				if AURA_EVENTS[event] and destGUID:find("^Player") and self.db.profile.always_me and (time - (alwaysThrottle[func] or 0)) > 1.5 then
-					alwaysThrottle[func] = time
-					args.destGUID, args.destName, args.destFlags, args.destRaidFlags = self.myGUID, self.myName, FLAGS_ME, 0
-				else
-					local info = groupState[destName]
-					if info then
-						args.destGUID, args.destName, args.destFlags, args.destRaidFlags = info.guid, info.name, FLAGS_PLAYER, 0
-					else
-						args.destGUID, args.destName, args.destFlags, args.destRaidFlags = destGUID, trimName(destName), setFlags(destGUID), 0
-					end
-				end
-				args.spellId, args.spellName, args.spellSchool = spellId, spellName, 0
-				args.time, args.extraSpellId, args.extraSpellName, args.amount = (time + self.startTime), extraSpellId, extraSpellName or amount, tonumber(amount)
-				if self.module[func] then
-					self:Debug(("|cnVISUAL_ALERT_COLOR_CYAN:%s|r"):format(event), func, args.spellId, args.spellName, args.destName)
-					self.args = args
-					self.module[func](self.module, args)
-				end
-			end
-		end
+	local info = groupState[name]
+	if info then
+		self.myName = info.name
+		self.myGUID = info.guid
 	end
 end
 
 function plugin:DoLine(line)
 	local time, event, info = getLogLineInfo(line)
 
-	if event == "CLEU" then
-		self:OnCombatEvent(time, ("#"):split(info))
-
-	elseif event == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
+	if event == "ENCOUNTER_TIMELINE_EVENT_ADDED" then
 		-- "[ENCOUNTER_TIMELINE_EVENT_ADDED] State: 0 (Active)#id#272#source#0#spellName#<secret>#spellID#<secret>#iconFileID#<secret>#duration#8#maxQueueDuration#6#icons#<secret>#severity#<secret>#isApproximate#<secret>"
 		local state, eventID, source, duration, maxQueueDuration = tonumberall(info:match("State: (%d).-#id#(.-)#source#(.-)#.-#duration#(.-)#maxQueueDuration#(.-)#"))
 		self:Debug(("|cnVISUAL_ALERT_COLOR_GREEN:ADDED %d|r"):format(eventID), duration)

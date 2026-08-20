@@ -14,13 +14,6 @@ local timelineState = ns.timelineState
 
 local classColorMessages = true
 
-local FILTER_EVENTS = {
-	-- ["SPELL_DAMAGE"] = true,
-	-- ["SPELL_MISSED"] = true,
-	["SPELL_PERIODIC_DAMAGE"] = true,
-	["SPELL_PERIODIC_MISSED"] = true,
-}
-
 local hookModule = nil
 local hooks = {}
 local hookFuncs = {}
@@ -86,18 +79,6 @@ end
 
 function hookFuncs.Log(module, event, func, ...)
 	hooks.Log(module, event, func, ...)
-	if FILTER_EVENTS[event] and func:match("Damage$") then
-		-- remove common damage handler (_DAMAGE is almost always after _AURA_APPLIED)
-		local auraEvents = eventMap["SPELL_AURA_APPLIED"]
-		if auraEvents then
-			for k, v in next, auraEvents do
-				if v == func then
-					auraEvents[k] = nil
-				end
-			end
-		end
-		return
-	end
 
 	if not eventMap[event] then
 		eventMap[event] = {}
@@ -299,7 +280,7 @@ do
 	end
 
 	local function getPlayerRolePosition(name)
-		return groupState[name] and groupState[name].postion
+		return groupState[name] and groupState[name].position
 	end
 
 	function hookFuncs.Tank(module, unit)
